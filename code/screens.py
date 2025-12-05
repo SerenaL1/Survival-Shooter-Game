@@ -7,6 +7,7 @@ from settings import *
 from utils import get_asset_path
 
 
+# Some definitions for RGB colors used in the game
 BLUE = (106, 159, 181)
 WHITE = (255, 255, 255)
 GREEN = (50, 150, 50)
@@ -14,27 +15,17 @@ DARK_GREEN = (70, 200, 70)
 RED = (150, 50, 50)
 DARK_RED = (200, 70, 70)
 
-
+# A function that creates text surfaces with a specific style by first creating a font object, then rendering the text onto a surface.
 def create_surface_with_text(text, font_size, text_rgb, bg_rgb):
-    """Returns surface with text written on"""
     font = pygame.freetype.SysFont("Courier", font_size, bold=True)
     surface, _ = font.render(text=text, fgcolor=text_rgb, bgcolor=bg_rgb)
     return surface.convert_alpha()
 
-
+# A user interface element that can be added to a surface. This creates interactive buttons 
+# That can change appearance when the user's mouse hovers over them. It also triggers actions if clicked.
 class UIElement(Sprite):
-    """An user interface element that can be added to a surface"""
 
     def __init__(self, center_position, text, font_size, bg_rgb, text_rgb, action=None):
-        """
-        Args:
-            center_position - tuple (x, y)
-            text - string of text to write
-            font_size - int
-            bg_rgb (background colour) - tuple (r, g, b)
-            text_rgb (text colour) - tuple (r, g, b)
-            action - the action associated with this button
-        """
         self.mouse_over = False
 
         default_image = create_surface_with_text(
@@ -56,18 +47,22 @@ class UIElement(Sprite):
 
         super().__init__()
 
+    # This is a property that return the current image based on the state of mouse_over variable. 
+    # If mouse is over the button, return highlighted image. otherwise, return normal image.
     @property
     def image(self):
         return self.images[1] if self.mouse_over else self.images[0]
 
+    # Returns either the highlighted rect or default rect at index 0, also based on state of mouse_over.
     @property
     def rect(self):
         return self.rects[1] if self.mouse_over else self.rects[0]
-
+   
+    # If mouse collides with the button, set the mouse_over state to true. If mouse_up, meaning the mouse 
+    # button was just released, then return the action associated with the button.
+    
     def update(self, mouse_pos, mouse_up):
-        """Updates the mouse_over variable and returns the button's
-           action value when clicked.
-        """
+        
         if self.rect.collidepoint(mouse_pos):
             self.mouse_over = True
             if mouse_up:
@@ -75,20 +70,21 @@ class UIElement(Sprite):
         else:
             self.mouse_over = False
 
+    # Draws element onto a pygame surface at the current rect position.
     def draw(self, surface):
         """Draws element onto a surface"""
         surface.blit(self.image, self.rect)
 
-
+# Defines the possible actions that can result from user interacting with menu screens. 
+# User can either start the game, play again, or quit the game.
 class ScreenAction(Enum):
     """Actions that can be returned by screens"""
     START_GAME = 1
     PLAY_AGAIN = 2
     QUIT = 3
 
-
+# Initialize the start screen containing the rules and play button.
 class StartScreen:
-    """Start screen with game rules and play button"""
     def __init__(self, display_surface, clock):
         self.display_surface = display_surface
         self.clock = clock
@@ -96,13 +92,12 @@ class StartScreen:
         self.text_font = pygame.font.Font(None, 40)
     
     def _draw_rules(self):
-        """Draw game rules on start screen"""
-        # Title
+        # Title of game
         title = self.title_font.render("Help Susie Get Home", True, WHITE)
         title_rect = title.get_rect(center=(WINDOW_WIDTH // 2, 100))
         self.display_surface.blit(title, title_rect)
         
-        # Rules - just plain text lines
+        # Rules
         rules = [
             "Susie got lost in the forest, help her find her way back home!",
             "",
@@ -112,7 +107,7 @@ class StartScreen:
             "Avoid monsters or shoot them, but don't let them get too close",
             "You have 5 hearts",
             "There are health packs hidden around the forest"
-        ]
+     ]
         
         y_offset = 200
         for line in rules:
@@ -120,9 +115,8 @@ class StartScreen:
             text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, y_offset))
             self.display_surface.blit(text, text_rect)
             y_offset += 40
-    
+    # Show the start screen, creates the play button, and return action when button is clicked
     def show(self):
-        """Display start screen and return action"""
         # Create buttons
         play_btn = UIElement(
             center_position=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 150),
@@ -137,31 +131,36 @@ class StartScreen:
         
         return self._game_loop(buttons)
     
+    # This runs a loop that handles events like mouse clicks, draws the screen, update the buttons
+    # and returns an action when the user clicks on the button. 
     def _game_loop(self, buttons):
-        """Handles screen loop until an action is returned by a button"""
         while True:
             mouse_up = False
             for event in pygame.event.get():
+                # Look at all the events that happened in a frame. If user clicked close the window, 
+                # quit the game.
                 if event.type == pygame.QUIT:
                     return ScreenAction.QUIT
+                
+                # If the left mouse button was released,set mouse_up to true.
                 if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     mouse_up = True
             
-            # Draw background and rules
+            # draw background and rules
             self.display_surface.fill((20, 20, 40))
             self._draw_rules()
             
-            # Update and draw buttons
+            # update and draw buttons by going through each buttom, and if it was clicked on, get its action.
             for button in buttons:
                 ui_action = button.update(pygame.mouse.get_pos(), mouse_up)
                 if ui_action is not None:
                     return ui_action
-            
+            # Draw all butotons to display surface and update the display.
             buttons.draw(self.display_surface)
             pygame.display.flip()
             self.clock.tick(60)
 
-
+# The win screen. Loads the win image and renters both a play_again and a quit button.
 class WinScreen:
     """Win screen with play again button"""
     def __init__(self, display_surface, clock):
@@ -179,8 +178,7 @@ class WinScreen:
             self.has_win_img = False
     
     def show(self):
-        """Display win screen and return whether to play again"""
-        # Create buttons
+        # Create buttons for play_again and quit.
         play_again_btn = UIElement(
             center_position=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 150),
             font_size=35,
@@ -198,12 +196,13 @@ class WinScreen:
             text="QUIT",
             action=ScreenAction.QUIT,
         )
-        
+        # Create a sprite gorup that contain both buttoms. Then use that as input in the screen loop to get the action from the button
         buttons = RenderUpdates(play_again_btn, quit_btn)
-        
         action = self._game_loop(buttons)
+
+        # If user indciates play_again, return True. otherwise return Flase 
         return action == ScreenAction.PLAY_AGAIN
-    
+    # Makes sure there is a screen loop happening in the background
     def _game_loop(self, buttons):
         """Handles screen loop until an action is returned by a button"""
         while True:

@@ -114,12 +114,15 @@ class Game:
     def setup(self):
         tmx_path = get_asset_path("data", "maps", "world.tmx")
         map = load_pygame(tmx_path)
-        print(map)
+        
+        # Store the possible home spawning positions
+        home_spawn_positions = []
+        
         # Creating sprites for each ground tile.
         for x, y, image in map.get_layer_by_name('Ground').tiles():
             Sprite((x * TILE_SIZE,y * TILE_SIZE), image, self.all_sprites)
         
-        # Creating the visible object sprites - e.g. trees, rocks. 
+        # Creating the visible object sprites, such as the trees and rocks. 
         for obj in map.get_layer_by_name('Objects'):
             CollisionSprite((obj.x, obj.y), obj.image, (self.all_sprites, self.collision_sprites))
 
@@ -134,7 +137,7 @@ class Game:
 
         #Loop through each object in the entities layer. If the entity is player, then create the player
         # sprite at the specified position. Create laser shooter sprite next to the player. 
-        # If entity is home, create it at the specified position. 
+        # It also collects all the spawn positions for home in a list. 
         # Otherwise, the remaining entites are all enemy spawn points, so add them to a list
         # of enemy spawn locations. 
         for obj in map.get_layer_by_name('Entities'):
@@ -142,9 +145,14 @@ class Game:
                 self.player = Player((obj.x,obj.y), self.all_sprites, self.collision_sprites)
                 self.gun = Gun(self.player, self.all_sprites)
             elif obj.name == 'Home':  
-                Home((obj.x, obj.y), (self.all_sprites, self.home_sprite))
+                home_spawn_positions.append((obj.x, obj.y))
             else:
                 self.spawn_positions.append((obj.x, obj.y))
+        # Randomly chooses one home spawn position and render the home image there
+        if home_spawn_positions:
+            home_pos = choice(home_spawn_positions)
+            Home(home_pos, (self.all_sprites, self.home_sprite))
+    
     # Checks if bullets and enemies are colliding. If so, call the destory method on the enemy sprite 
     # that was hit, and remove the bullet from the game.
     def bullet_collision(self):
@@ -234,8 +242,9 @@ class Game:
 
                 # Generate an enemy at one of the spawn positions 
                 if event.type == self.enemy_event:
-                        Enemy(choice(self.spawn_positions), choice(list(self.enemy_frames.values())), (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites)
-
+                        enemy_type = choice(['normal', 'fast', 'tank'])  # More normals than special
+                        Enemy(choice(self.spawn_positions), choice(list(self.enemy_frames.values())), 
+                            (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, enemy_type)
             # update game states
             self.gun_timer()
             self.damage_timer() 

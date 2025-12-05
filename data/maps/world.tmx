@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="52" height="50" tilewidth="64" tileheight="64" infinite="0" nextlayerid="12" nextobjectid="239">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="52" height="50" tilewidth="64" tileheight="64" infinite="0" nextlayerid="12" nextobjectid="243">
  <tileset firstgid="1" source="../tilesets/world_tileset.tsx"/>
  <tileset firstgid="157" source="../tilesets/Objects.tsx"/>
  <layer id="1" name="Ground" width="52" height="50">
@@ -74,7 +74,7 @@
   <object id="236" gid="174" x="1514.31" y="2396.47" width="100" height="100"/>
  </objectgroup>
  <objectgroup id="4" name="Entities">
-  <object id="38" name="Player" x="2484.67" y="2314.92">
+  <object id="38" name="Player" x="1744.67" y="1768.25">
    <point/>
   </object>
   <object id="39" name="Enemy" x="1734.67" y="946.667">
@@ -183,6 +183,9 @@
    <point/>
   </object>
   <object id="175" name="Home" gid="171" x="787.059" y="982.955" width="465.503" height="394.688"/>
+  <object id="239" name="Home" gid="171" x="2467.25" y="635.989" width="465.503" height="394.688"/>
+  <object id="240" name="Home" gid="171" x="2727.25" y="2675.99" width="465.503" height="394.688"/>
+  <object id="242" name="Home" gid="171" x="313.915" y="2822.66" width="465.503" height="394.688"/>
  </objectgroup>
  <objectgroup id="2" name="Collisions">
   <object id="97" x="11.1621" y="5.43836" width="3300.48" height="110.667"/>

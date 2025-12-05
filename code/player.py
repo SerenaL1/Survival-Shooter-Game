@@ -2,6 +2,9 @@ from settings import *
 from utils import get_asset_path
 
 class Player(pygame.sprite.Sprite):
+    # Initialize the player with frames, position, movement capabilities,
+    # and collision detection. Sets up the player's hitbox smaller than the sprite
+ 
     def __init__(self, pos, groups, collision_sprites):
         super().__init__(groups)
         self.load_images()
@@ -15,6 +18,8 @@ class Player(pygame.sprite.Sprite):
         self.speed = 500
         self.collision_sprites = collision_sprites
 
+    # Load all player animation frames from the folders for each direction (left, right, up, down).
+    # Then stores the images in dictionary
     def load_images(self):
         self.frames = {'left': [], 'right': [], 'up': [], 'down': []}
 
@@ -25,7 +30,6 @@ class Player(pygame.sprite.Sprite):
                 if not file_names:
                     continue
 
-                # keep only png files whose name *before* the dot is a number
                 frame_files = [
                     name for name in file_names
                     if name.lower().endswith('.png') and name.split('.')[0].isdigit()
@@ -35,7 +39,7 @@ class Player(pygame.sprite.Sprite):
                     full_path = join(folder_path, file_name)
                     surf = pygame.image.load(full_path).convert_alpha()
 
-                    scale_factor = 0.2  # Adjust this number
+                    scale_factor = 0.2  
                     new_width = int(surf.get_width() * scale_factor)
                     new_height = int(surf.get_height() * scale_factor)
                     surf = pygame.transform.scale(surf, (new_width, new_height))
@@ -43,13 +47,16 @@ class Player(pygame.sprite.Sprite):
                     self.frames[state].append(surf)
 
                    
-
+    # Read keyboard input (arrow keys or WASD) and set the player's movement direction
+    # Normalizes diagonal movement so speed is consistent in all directions
     def input(self):
         keys = pygame.key.get_pressed()
         self.direction.x = int(keys[pygame.K_RIGHT] or keys[pygame.K_d]) - int(keys[pygame.K_LEFT] or keys[pygame.K_a])
         self.direction.y = int(keys[pygame.K_DOWN] or keys[pygame.K_s]) - int(keys[pygame.K_UP] or keys[pygame.K_w])
         self.direction = self.direction.normalize() if self.direction else self.direction
 
+     # Move player based on direction and speed, handling collisions separately for horizontal
+    # and vertical movement to prevent getting stuck on corners.
     def move(self, dt):
         self.hitbox_rect.x += self.direction.x * self.speed * dt
         self.collision('horizontal')
@@ -57,6 +64,8 @@ class Player(pygame.sprite.Sprite):
         self.collision('vertical')
         self.rect.center = self.hitbox_rect.center
 
+    # Handle collisions with obstacles by adjusting the player's hitbox position to prevent overlap.
+    # Checks collision direction (horizontal or vertical) and adjusts position accordingly.
     def collision(self, direction):
         for sprite in self.collision_sprites:
             if sprite.rect.colliderect(self.hitbox_rect):
@@ -66,6 +75,9 @@ class Player(pygame.sprite.Sprite):
                 else:
                     if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom
                     if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
+    
+     # Update the player's appearance based on movement direction. Changes state (left/right/up/down)
+    # and cycles through animation frames. Resets to frame 0 when stationary.
 
     def animate(self, dt):
         # get state 
@@ -77,7 +89,8 @@ class Player(pygame.sprite.Sprite):
         # animate
         self.frame_index = self.frame_index + 5 * dt if self.direction else 0
         self.image = self.frames[self.state][int(self.frame_index) % len(self.frames[self.state])]
-
+    
+    #  update loop, called every frame. Processes input, moves the player, updates animation / visual appearance
     def update(self, dt):
         self.input()
         self.move(dt)
