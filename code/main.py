@@ -46,6 +46,11 @@ class Game:
         self.is_colliding = False
         self.collision_damage_delay = 1000
 
+        # Initializing the number of waves 
+        self.wave_number = 1
+        self.enemies_killed = 0
+        self.enemies_per_wave = 10
+
         # game state
         self.game_won = False
 
@@ -155,6 +160,8 @@ class Game:
     
     # Checks if bullets and enemies are colliding. If so, call the destory method on the enemy sprite 
     # that was hit, and remove the bullet from the game.
+    # Also, if the bullet collides with a tree, rock, or any other static sprite, it is also killed 
+    # this is to simulate the tree, rock, etc blocking the bullet's path.
     def bullet_collision(self):
         if self.bullet_sprites:
             for bullet in self.bullet_sprites:
@@ -162,12 +169,28 @@ class Game:
                 if collision_sprites:
                     for sprite in collision_sprites:
                         sprite.destroy()
+                        if sprite.death_time > 0:  # Enemy actually died
+                            self.enemies_killed += 1
+                            self.check_wave_complete()
                     bullet.kill()
+                # Check collision with obstacles (trees, rocks, borders)
+                elif pygame.sprite.spritecollide(bullet, self.collision_sprites, False):
+                    bullet.kill()
+    def check_wave_complete(self):
+        if self.enemies_killed >= self.enemies_per_wave:
+            self.wave_number += 1
+            self.enemies_killed = 0
+            self.enemies_per_wave += 5  # More enemies each wave
+            # Spawn enemies faster
+            pygame.time.set_timer(self.enemy_event, max(500, 2000 - (self.wave_number * 100)))
+        
+    
     # Function that handles collisions between player and enemy.
     def player_collision(self):
         current_time = pygame.time.get_ticks()
 
         # Check if player is colliding with any enemy and start tracking the start time for collision
+        colliding_enemies = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask)
         if pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask):
             if not self.is_colliding:
                 self.is_colliding = True
@@ -177,7 +200,9 @@ class Game:
             if self.is_colliding and self.can_take_damage:
                 collision_duration = current_time - self.collision_start_time
                 if collision_duration >= self.collision_damage_delay:
-                    self.player_health -= 1
+                    # Get the first colliding enemy and use its damage value
+                    enemy = colliding_enemies[0]
+                    self.player_health -= enemy.damage  # Use enemy's damage instead of always -1
                     self.can_take_damage = False
                     self.damage_time = current_time
                     
@@ -222,7 +247,11 @@ class Game:
             x = 10
             y = WINDOW_HEIGHT - heart_bar.get_height() - 10
             self.display_surface.blit(heart_bar, (x, y))
-    
+
+            # Display wave number
+            wave_font = pygame.font.Font(None, 40)
+            wave_text = wave_font.render(f"Wave: {self.wave_number}", True, (255, 255, 255))
+            self.display_surface.blit(wave_text, (10, 10))
     # Game loop that runs the game. 
     def run(self):
         start_screen = StartScreen(self.display_surface, self.clock)
@@ -298,6 +327,13 @@ class Game:
         
         self.can_shoot = True
         self.shoot_time = 0
+
+        # Reset wave system
+        self.wave_number = 1
+        self.enemies_killed = 0
+        self.enemies_per_wave = 10
+        # Reset enemy spawn timer to initial 2 seconds
+        pygame.time.set_timer(self.enemy_event, 2000)
 
         self.spawn_positions = []
         

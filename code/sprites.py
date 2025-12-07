@@ -102,13 +102,16 @@ class Enemy(pygame.sprite.Sprite):
         # There are three different enemy types, they move with different speed and can do different amounts of damage on player.
         if enemy_type == 'fast':
             self.speed = 350  
-            self.health = 1   
+            self.health = 1
+            self.damage = 1  # Fast enemies deal 1 damage
         elif enemy_type == 'tank':
             self.speed = 100 
-            self.health = 3   
-        else: 
+            self.health = 1
+            self.damage = 2  # Tank enemies deal 2 damage (more punishing)
+        else:  # normal
             self.speed = 200
             self.health = 1
+            self.damage = 1
 
         # timer 
         self.death_time = 0
