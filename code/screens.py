@@ -72,7 +72,6 @@ class UIElement(Sprite):
 
     # Draws element onto a pygame surface at the current rect position.
     def draw(self, surface):
-        """Draws element onto a surface"""
         surface.blit(self.image, self.rect)
 
 # Defines the possible actions that can result from user interacting with menu screens. 
@@ -83,13 +82,48 @@ class ScreenAction(Enum):
     PLAY_AGAIN = 2
     QUIT = 3
 
-# Initialize the start screen containing the rules and play button.
-class StartScreen:
+ # Base class for all screens
+# All three screen types - start, win, or lost - inherit from this to share common functionality
+class BaseScreen:
     def __init__(self, display_surface, clock):
         self.display_surface = display_surface
         self.clock = clock
         self.title_font = pygame.font.Font(None, 80)
         self.text_font = pygame.font.Font(None, 40)
+    
+    # Override this in subclasses to draw screen-specific content
+    def _draw_content(self):
+        pass
+
+    # This runs a loop that handles events like mouse clicks, draws the screen, update the buttons
+    # and returns an action when the user clicks on the button. 
+    def _game_loop(self, buttons):
+        while True:
+            mouse_up = False
+            for event in pygame.event.get():
+                # Look at all the events that happened in a frame. If user clicked close the window, 
+                # quit the game.
+                if event.type == pygame.QUIT:
+                    return ScreenAction.QUIT
+                
+                # If the left mouse button was released,set mouse_up to true.
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    mouse_up = True
+            
+            # Draw screen-specific content (implemented by subclass)
+            self._draw_content()
+            
+            # update and draw buttons by going through each buttom, and if it was clicked on, get its action.
+            for button in buttons:
+                ui_action = button.update(pygame.mouse.get_pos(), mouse_up)
+                if ui_action is not None:
+                    return ui_action
+            # Draw all butotons to display surface and update the display.
+            buttons.draw(self.display_surface)
+            pygame.display.flip()
+            self.clock.tick(60)
+# Initialize the start screen containing the rules and play button.
+class StartScreen(BaseScreen):
     
     def _draw_rules(self):
         # Title of game
@@ -117,6 +151,12 @@ class StartScreen:
             text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, y_offset))
             self.display_surface.blit(text, text_rect)
             y_offset += 40
+    
+    # Draw the start screen background and rules
+    def _draw_content(self):
+        self.display_surface.fill((20, 20, 40))
+        self._draw_rules()
+    
     # Show the start screen, creates the play button, and return action when button is clicked
     def show(self):
         # Create buttons
@@ -132,52 +172,35 @@ class StartScreen:
         buttons = RenderUpdates(play_btn)
         
         return self._game_loop(buttons)
-    
-    # This runs a loop that handles events like mouse clicks, draws the screen, update the buttons
-    # and returns an action when the user clicks on the button. 
-    def _game_loop(self, buttons):
-        while True:
-            mouse_up = False
-            for event in pygame.event.get():
-                # Look at all the events that happened in a frame. If user clicked close the window, 
-                # quit the game.
-                if event.type == pygame.QUIT:
-                    return ScreenAction.QUIT
-                
-                # If the left mouse button was released,set mouse_up to true.
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                    mouse_up = True
-            
-            # draw background and rules
-            self.display_surface.fill((20, 20, 40))
-            self._draw_rules()
-            
-            # update and draw buttons by going through each buttom, and if it was clicked on, get its action.
-            for button in buttons:
-                ui_action = button.update(pygame.mouse.get_pos(), mouse_up)
-                if ui_action is not None:
-                    return ui_action
-            # Draw all butotons to display surface and update the display.
-            buttons.draw(self.display_surface)
-            pygame.display.flip()
-            self.clock.tick(60)
 
 # The win screen. Loads the win image and renters both a play_again and a quit button.
-class WinScreen:
-    """Win screen with play again button"""
+# Has a basescreen inheritance
+class WinScreen(BaseScreen):
     def __init__(self, display_surface, clock):
-        self.display_surface = display_surface
-        self.clock = clock
-        self.title_font = pygame.font.Font(None, 80)
-        self.text_font = pygame.font.Font(None, 40)
+        super().__init__(display_surface, clock)
         
-        # Load win image
+        # Load win image. In cas the image is missing, it would render something on its own.
         try:
             self.win_img = pygame.image.load(get_asset_path('images', 'ui', 'you_win.png')).convert_alpha()
             self.win_img = pygame.transform.scale(self.win_img, (WINDOW_WIDTH, WINDOW_HEIGHT))
             self.has_win_img = True
         except:
             self.has_win_img = False
+    # If the win screen image is not found, the win screen would be rendered through this code.
+    def _draw_content(self):
+        self.display_surface.fill((0, 50, 0))  
+        
+        if self.has_win_img:
+            self.display_surface.blit(self.win_img, (0, 0))
+        else:
+            win_text = self.title_font.render("YOU WIN!", True, (255, 215, 0))
+            win_rect = win_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
+            self.display_surface.blit(win_text, win_rect)
+            
+            subtitle = self.text_font.render("You made it home!", True, WHITE)
+            subtitle_rect = subtitle.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            self.display_surface.blit(subtitle, subtitle_rect)
+    
     
     def show(self):
         # Create buttons for play_again and quit.
@@ -204,50 +227,17 @@ class WinScreen:
 
         # If user indicates play_again, return True. otherwise return Flase 
         return action == ScreenAction.PLAY_AGAIN
-    # Makes sure there is a screen loop happening in the background.
-    # handles mouse clicks, draws the screen and buttons,
-    # returns an action when the user clicks a button or closes the window.
-    def _game_loop(self, buttons):
-        while True:
-            mouse_up = False
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return ScreenAction.QUIT
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                    mouse_up = True
-            
-            # Draw background and rules
-            self.display_surface.fill((0, 50, 0))  # Dark green
-            
-            if self.has_win_img:
-                self.display_surface.blit(self.win_img, (0, 0))
-            else:
-                win_text = self.title_font.render("YOU WIN!", True, (255, 215, 0))
-                win_rect = win_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
-                self.display_surface.blit(win_text, win_rect)
-                
-                subtitle = self.text_font.render("You made it home!", True, WHITE)
-                subtitle_rect = subtitle.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
-                self.display_surface.blit(subtitle, subtitle_rect)
-            
-            # Update and draw buttons. if user clicked on it, get its action
-            for button in buttons:
-                ui_action = button.update(pygame.mouse.get_pos(), mouse_up)
-                if ui_action is not None:
-                    return ui_action
-            
-            buttons.draw(self.display_surface)
-            pygame.display.flip()
-            self.clock.tick(60)
+    
 
  # load the game over screen with display surface, clock, fonts. also load the game over image.
-class GameOverScreen:
+class GameOverScreen(BaseScreen):
     def __init__(self, display_surface, clock):
+        super().__init__(display_surface, clock) 
         self.display_surface = display_surface
         self.clock = clock
         self.title_font = pygame.font.Font(None, 80)
         self.text_font = pygame.font.Font(None, 40)
-        
+        # Tries to load the game over screen image, but if it's not there, it would render something on its own
         try:
             self.game_over_img = pygame.image.load(get_asset_path('images', 'ui', 'game_over.png')).convert_alpha()
             target_width = int(WINDOW_WIDTH * 0.8)
@@ -257,6 +247,23 @@ class GameOverScreen:
             self.has_game_over_img = True
         except:
             self.has_game_over_img = False
+    
+    # Draw the game over screen background and message
+    def _draw_content(self):
+        # background is drawn here
+        self.display_surface.fill((40, 20, 20))  # Dark red
+        
+        if self.has_game_over_img:
+            img_rect = self.game_over_img.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 50))
+            self.display_surface.blit(self.game_over_img, img_rect)
+        else:
+            game_over_text = self.title_font.render("GAME OVER", True, (255, 50, 50))
+            text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
+            self.display_surface.blit(game_over_text, text_rect)
+            
+            subtitle = self.text_font.render("You ran out of hearts!", True, WHITE)
+            subtitle_rect = subtitle.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            self.display_surface.blit(subtitle, subtitle_rect)
     
      # Display the game over screen with play again and quit buttons.
     # Returns True if player wants to play again, False if they want to quit.
@@ -285,38 +292,3 @@ class GameOverScreen:
         
         action = self._game_loop(buttons)
         return action == ScreenAction.PLAY_AGAIN
-    
-      # Run the screen event loop. Handles events, draws background and game over image/text,
-    # updates buttons, and returns the action when a button is clicked.
-    def _game_loop(self, buttons):
-        while True:
-            mouse_up = False
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return ScreenAction.QUIT
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                    mouse_up = True
-            # background is drawn here
-            self.display_surface.fill((40, 20, 20))  # Dark red
-            
-            if self.has_game_over_img:
-                img_rect = self.game_over_img.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 50))
-                self.display_surface.blit(self.game_over_img, img_rect)
-            else:
-                game_over_text = self.title_font.render("GAME OVER", True, (255, 50, 50))
-                text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
-                self.display_surface.blit(game_over_text, text_rect)
-                
-                subtitle = self.text_font.render("You ran out of hearts!", True, WHITE)
-                subtitle_rect = subtitle.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
-                self.display_surface.blit(subtitle, subtitle_rect)
-            
-            # Update and draw buttons
-            for button in buttons:
-                ui_action = button.update(pygame.mouse.get_pos(), mouse_up)
-                if ui_action is not None:
-                    return ui_action
-            
-            buttons.draw(self.display_surface)
-            pygame.display.flip()
-            self.clock.tick(60)

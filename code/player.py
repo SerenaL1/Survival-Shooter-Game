@@ -1,5 +1,5 @@
 from settings import * 
-from utils import get_asset_path
+from utils import get_asset_path, handle_collision
 
 class Player(pygame.sprite.Sprite):
     # Initialize the player with frames, position, movement capabilities,
@@ -67,14 +67,7 @@ class Player(pygame.sprite.Sprite):
     # Handle collisions with obstacles by adjusting the player's hitbox position to prevent overlap.
     # Checks collision direction (horizontal or vertical) and adjusts position accordingly.
     def collision(self, direction):
-        for sprite in self.collision_sprites:
-            if sprite.rect.colliderect(self.hitbox_rect):
-                if direction == 'horizontal':
-                    if self.direction.x > 0: self.hitbox_rect.right = sprite.rect.left
-                    if self.direction.x < 0: self.hitbox_rect.left = sprite.rect.right
-                else:
-                    if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom
-                    if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
+        handle_collision(self.hitbox_rect, self.collision_sprites, direction, self.direction)
     
      # Update the player's appearance based on movement direction. Changes state (left/right/up/down)
     # and cycles through animation frames. Resets to frame 0 when stationary.
