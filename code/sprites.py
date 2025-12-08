@@ -4,7 +4,7 @@ from utils import get_asset_path, handle_collision
 
 # Sets up sprite with an image and position,
 #  marks it as a ground layer sprite for rendering order
-class Sprite(pygame.sprite.Sprite):
+class GroundSprite(pygame.sprite.Sprite):
     def __init__(self, pos, surf, groups):
         super().__init__(groups)
         self.image = surf
@@ -25,7 +25,7 @@ class Gun(pygame.sprite.Sprite):
     def __init__(self, player, groups):
         # player connection 
         self.player = player 
-        self.distance = 140
+        self.distance = GUN_DISTANCE
         self.player_direction = pygame.Vector2(0,1)
 
         # sprite setup 
@@ -33,7 +33,7 @@ class Gun(pygame.sprite.Sprite):
 
         lasergun_original = pygame.image.load(get_asset_path('images', 'gun', 'lasergun.png')).convert_alpha()
         # Scale down the image of laser gun
-        lasergun_size = 150  
+        lasergun_size = GUN_SIZE
         self.gun_surf = pygame.transform.scale(lasergun_original, (lasergun_size, lasergun_size))
 
         self.image = self.gun_surf
@@ -69,10 +69,10 @@ class Bullet(pygame.sprite.Sprite):
         self.image = surf 
         self.rect = self.image.get_rect(center = pos)
         self.spawn_time = pygame.time.get_ticks()
-        self.lifetime = 1000
+        self.lifetime = BULLET_LIFETIME
 
         self.direction = direction 
-        self.speed = 1200 
+        self.speed = BULLET_SPEED
     
     def update(self, dt):
         self.rect.center += self.direction * self.speed * dt
@@ -91,31 +91,31 @@ class Enemy(pygame.sprite.Sprite):
         # image 
         self.frames, self.frame_index = frames, 0 
         self.image = self.frames[self.frame_index]
-        self.animation_speed = 6
+        self.animation_speed = ENEMY_ANIMATION_SPEED
 
         # rect 
         self.rect = self.image.get_rect(center = pos)
-        self.hitbox_rect = self.rect.inflate(-90,-90)
+        self.hitbox_rect = self.rect.inflate(ENEMY_HITBOX_INFLATE)
         self.collision_sprites = collision_sprites
         self.direction = pygame.Vector2()
 
         # There are three different enemy types, they move with different speed and can do different amounts of damage on player.
         if enemy_type == 'fast':
-            self.speed = 350  
+            self.speed = ENEMY_FAST_SPEED
             self.health = 1
-            self.damage = 1  # Fast enemies deal 1 damage
+            self.damage = ENEMY_FAST_DAMAGE  # Fast enemies deal 1 damage
         elif enemy_type == 'tank':
-            self.speed = 100 
+            self.speed = ENEMY_TANK_SPEED
             self.health = 1
-            self.damage = 2  # Tank enemies deal 2 damage (more punishing)
+            self.damage = ENEMY_TANK_DAMAGE  # Tank enemies deal 2 damage (more punishing)
         else:  # normal
-            self.speed = 200
+            self.speed = ENEMY_NORMAL_SPEED
             self.health = 1
-            self.damage = 1
+            self.damage = ENEMY_NORMAL_DAMAGE
 
         # timer 
         self.death_time = 0
-        self.death_duration = 400
+        self.death_duration = ENEMY_DEATH_DURATION
     
     def animate(self, dt):
         self.frame_index += self.animation_speed * dt
@@ -173,7 +173,7 @@ class Home(pygame.sprite.Sprite):
         super().__init__(groups)
         home_original = pygame.image.load(get_asset_path('images', 'home', 'home.png')).convert_alpha()
         
-        home_size = (384, 384)  
+        home_size = HOME_SIZE
         self.image = pygame.transform.scale(home_original, home_size)
         self.rect = self.image.get_rect(center=pos)
 

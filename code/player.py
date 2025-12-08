@@ -11,12 +11,25 @@ class Player(pygame.sprite.Sprite):
         self.state, self.frame_index = 'right', 0
         self.image = self.frames['down'][0]
         self.rect = self.image.get_rect(center = pos)
-        self.hitbox_rect = self.rect.inflate(-60, -90)
+        self.hitbox_rect = self.rect.inflate(PLAYER_HITBOX_INFLATE)
     
         # movement 
         self.direction = pygame.Vector2()
-        self.speed = 500
+        self.speed = PLAYER_SPEED
         self.collision_sprites = collision_sprites
+
+         # health system, with 0.5 second invincibility to the player right after damage is taken
+        self.max_health = PLAYER_MAX_HEALTH
+        self.health = self.max_health
+        self.can_take_damage = True
+        self.damage_cooldown = PLAYER_DAMAGE_COOLDOWN
+        self.damage_time = 0
+        
+        # Collision tracking of player with enemy. Only after colliding for 1 second or more can the
+        # player take damage.
+        self.collision_start_time = 0
+        self.is_colliding = False
+        self.collision_damage_delay = PLAYER_COLLISION_DAMAGE_DELAY
 
     # Load all player animation frames from the folders for each direction (left, right, up, down).
     # Then stores the images in dictionary
@@ -39,7 +52,7 @@ class Player(pygame.sprite.Sprite):
                     full_path = join(folder_path, file_name)
                     surf = pygame.image.load(full_path).convert_alpha()
 
-                    scale_factor = 0.2  
+                    scale_factor = PLAYER_SCALE_FACTOR
                     new_width = int(surf.get_width() * scale_factor)
                     new_height = int(surf.get_height() * scale_factor)
                     surf = pygame.transform.scale(surf, (new_width, new_height))
@@ -88,3 +101,23 @@ class Player(pygame.sprite.Sprite):
         self.input()
         self.move(dt)
         self.animate(dt)
+    # Deal damage to player if not in invincibility frames. Returns True if damage was dealt.
+    def take_damage(self, amount):
+        if self.can_take_damage:
+            self.health -= amount
+            self.can_take_damage = False
+            self.damage_time = pygame.time.get_ticks()
+            return True
+        return False
+    # Update invincibility timer
+    def update_damage_timer(self):
+        if not self.can_take_damage:
+            if pygame.time.get_ticks() - self.damage_time >= self.damage_cooldown:
+                self.can_take_damage = True
+    #  Reset health to max (for new game)
+    def reset_health(self):
+        self.health = self.max_health
+        self.can_take_damage = True
+        self.damage_time = 0
+        self.collision_start_time = 0
+        self.is_colliding = False

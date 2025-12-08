@@ -2,6 +2,55 @@ import pygame
 from os.path import join
 from os import walk
 
-# Abstract away from imports needed for every python script in the code folder. Also indicate the window size of the game and tile size.
+# Abstract away from imports needed for every python script in the code folder. 
+# Also, indicate the window size of the game, tile size, and various settings as constants.
 WINDOW_WIDTH, WINDOW_HEIGHT = 1280,720
 TILE_SIZE = 64
+
+# Constants used in the game
+# Player settings
+PLAYER_SPEED = 500
+PLAYER_SCALE_FACTOR = 0.2
+PLAYER_HITBOX_INFLATE = (-60, -90)
+PLAYER_MAX_HEALTH = 5
+PLAYER_DAMAGE_COOLDOWN = 500
+PLAYER_COLLISION_DAMAGE_DELAY = 1000
+
+# Gun settings
+GUN_DISTANCE = 140
+GUN_SIZE = 150
+GUN_COOLDOWN = 100
+BULLET_OFFSET = 50
+
+# Bullet settings
+BULLET_SIZE = 25
+BULLET_SPEED = 1200
+BULLET_LIFETIME = 1000
+
+# Enemy settings
+ENEMY_ANIMATION_SPEED = 6
+ENEMY_HITBOX_INFLATE = (-90, -90)
+ENEMY_DEATH_DURATION = 400
+
+ENEMY_NORMAL_SPEED = 200
+ENEMY_FAST_SPEED = 350
+ENEMY_TANK_SPEED = 100
+
+ENEMY_NORMAL_DAMAGE = 1
+ENEMY_FAST_DAMAGE = 1
+ENEMY_TANK_DAMAGE = 2
+
+# Wave settings
+INITIAL_ENEMIES_PER_WAVE = 10
+ENEMIES_INCREMENT_PER_WAVE = 5
+INITIAL_SPAWN_INTERVAL = 2000
+MIN_SPAWN_INTERVAL = 500
+SPAWN_INTERVAL_DECREASE = 100
+
+# UI settings
+HEART_SCALE_FACTOR = 0.25
+HEART_ORIGINAL_WIDTH = 880
+HEART_ORIGINAL_HEIGHT = 152
+
+# Home settings
+HOME_SIZE = (384, 384)

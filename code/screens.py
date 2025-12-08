@@ -233,10 +233,7 @@ class WinScreen(BaseScreen):
 class GameOverScreen(BaseScreen):
     def __init__(self, display_surface, clock):
         super().__init__(display_surface, clock) 
-        self.display_surface = display_surface
-        self.clock = clock
-        self.title_font = pygame.font.Font(None, 80)
-        self.text_font = pygame.font.Font(None, 40)
+        
         # Tries to load the game over screen image, but if it's not there, it would render something on its own
         try:
             self.game_over_img = pygame.image.load(get_asset_path('images', 'ui', 'game_over.png')).convert_alpha()

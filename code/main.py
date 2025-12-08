@@ -1,6 +1,6 @@
 from settings import *
 from player import Player
-from sprites import *
+from sprites import GroundSprite, CollisionSprite, Gun, Bullet, Enemy, Home, HealthPack
 from pytmx.util_pygame import load_pygame
 from random import randint, choice
 from groups import AllSprites
@@ -20,6 +20,9 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
 
+        # UI font
+        self.wave_text_font = pygame.font.Font(None, 40)
+        
         # Adds sprite objects into groups, which are pygame containers
         self.all_sprites = AllSprites()
         self.collision_sprites = pygame.sprite.Group()
@@ -31,32 +34,20 @@ class Game:
         # laser beam timer
         self.can_shoot = True
         self.shoot_time = 0 
-        self.gun_cooldown = 100
+        self.gun_cooldown = GUN_COOLDOWN
 
-        # health system, with 0.5 second invincibility to the player right after damage is taken
-        self.player_health = 5
-        self.max_health = 5
-        self.can_take_damage = True
-        self.damage_cooldown = 500 
-        self.damage_time = 0
-
-        # Collision tracking of player with enemy. Only after colliding for 1 second or more can the
-        # player take damage.
-        self.collision_start_time = 0
-        self.is_colliding = False
-        self.collision_damage_delay = 1000
 
         # Initializing the number of waves 
         self.wave_number = 1
         self.enemies_killed = 0
-        self.enemies_per_wave = 10
+        self.enemies_per_wave = INITIAL_ENEMIES_PER_WAVE
 
         # game state
         self.game_won = False
 
         # Spawn enemy ever 2 seconds. Use the spawn_positions list to store enemy spawn positions. 
         self.enemy_event = pygame.event.custom_type()
-        pygame.time.set_timer(self.enemy_event, 2000)
+        pygame.time.set_timer(self.enemy_event, INITIAL_SPAWN_INTERVAL)
         self.spawn_positions = []
 
         # Load in all images and sprites and set up the game.
@@ -66,18 +57,18 @@ class Game:
     # Function that loads all images. Sets the bullet image to a scaled size. 
     def load_images(self):
         bullet_original = pygame.image.load(get_asset_path('images', 'gun', 'laser.png')).convert_alpha()
-        bullet_size = 25  
+        bullet_size = BULLET_SIZE
         self.bullet_surf = pygame.transform.scale(bullet_original, (bullet_size, bullet_size))
 
     # Stores the heart images in a dictionary with keys being the number of hearts (0 to 5 hearts)
     # in the image (to reflect health level)
         self.heart_images = {}
-        scale_factor = 0.25
+        scale_factor = HEART_SCALE_FACTOR
         for i in range(1, 6): 
             heart_path = get_asset_path('images', 'ui', f'hearts_{i}-removebg-preview.png')
             heart_surf = pygame.image.load(heart_path).convert_alpha()
-            new_width = int(880 * scale_factor)
-            new_height = int(152 * scale_factor)
+            new_width = int(HEART_ORIGINAL_WIDTH * scale_factor)
+            new_height = int(HEART_ORIGINAL_HEIGHT * scale_factor)
 
             # Scale down each heart image
             self.heart_images[i] = pygame.transform.scale(heart_surf, (new_width, new_height))
@@ -101,7 +92,7 @@ class Game:
     # Disable shooting ability until the cooldown is over
     def input(self):
         if pygame.mouse.get_pressed()[0] and self.can_shoot:
-            pos = self.gun.rect.center + self.gun.player_direction * 50
+            pos = self.gun.rect.center + self.gun.player_direction * BULLET_OFFSET
             Bullet(self.bullet_surf, pos, self.gun.player_direction, (self.all_sprites, self.bullet_sprites))
             self.can_shoot = False
             self.shoot_time = pygame.time.get_ticks()
@@ -125,7 +116,7 @@ class Game:
         
         # Creating sprites for each ground tile.
         for x, y, image in map.get_layer_by_name('Ground').tiles():
-            Sprite((x * TILE_SIZE,y * TILE_SIZE), image, self.all_sprites)
+            GroundSprite((x * TILE_SIZE,y * TILE_SIZE), image, self.all_sprites)
         
         # Creating the visible object sprites, such as the trees and rocks. 
         for obj in map.get_layer_by_name('Objects'):
@@ -180,10 +171,10 @@ class Game:
         if self.enemies_killed >= self.enemies_per_wave:
             self.wave_number += 1
             self.enemies_killed = 0
-            self.enemies_per_wave += 5  # More enemies each wave
+            self.enemies_per_wave += ENEMIES_INCREMENT_PER_WAVE # More enemies each wave
             # Spawn enemies faster
-            pygame.time.set_timer(self.enemy_event, max(500, 2000 - (self.wave_number * 100)))
-        
+            new_interval = max(MIN_SPAWN_INTERVAL, INITIAL_SPAWN_INTERVAL - (self.wave_number * SPAWN_INTERVAL_DECREASE))
+            pygame.time.set_timer(self.enemy_event, new_interval)
     
     # Function that handles collisions between player and enemy.
     def player_collision(self):
@@ -191,30 +182,27 @@ class Game:
 
         # Check if player is colliding with any enemy and start tracking the start time for collision
         colliding_enemies = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask)
-        if pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask):
-            if not self.is_colliding:
-                self.is_colliding = True
-                self.collision_start_time = current_time
+        if colliding_enemies:
+            if not self.player.is_colliding:
+                self.player.is_colliding = True
+                self.player.collision_start_time = current_time
             
             # if collision lasted long enough, player will take damage
-            if self.is_colliding and self.can_take_damage:
-                collision_duration = current_time - self.collision_start_time
-                if collision_duration >= self.collision_damage_delay:
+            if self.player.is_colliding and self.player.can_take_damage:
+                collision_duration = current_time - self.player.collision_start_time
+                if collision_duration >= self.player.collision_damage_delay:
                     # Get the first colliding enemy and use its damage value
                     enemy = colliding_enemies[0]
-                    self.player_health -= enemy.damage  # Use enemy's damage instead of always -1
-                    self.can_take_damage = False
-                    self.damage_time = current_time
+                    self.player.take_damage(enemy.damage)
+                    self.player.collision_start_time = current_time
                     
-                    # Reset collision timer
-                    self.collision_start_time = current_time
-                    
-                    if self.player_health <= 0:
+                    if self.player.health <= 0:
                         self.running = False
+         # if player isn't colliding with enemy anymore, reset the timer as well
         else:
-            # if player isn't colliding with enemy anymore, reset the timer as well
-            self.is_colliding = False
-            self.collision_start_time = 0
+            self.player.is_colliding = False
+            self.player.collision_start_time = 0
+        
 
     # Function that handles player collision with the home sprite. If collides, set the game state to won and end the game.
     def home_collision(self):
@@ -228,30 +216,25 @@ class Game:
     def health_pack_collision(self):
         collided_health_packs = pygame.sprite.spritecollide(self.player, self.health_pack_sprites, False)
         for health_pack in collided_health_packs:
-            if self.player_health < self.max_health:
-                self.player_health += 1
-                health_pack.kill()  
+            if self.player.health < self.player.max_health:
+                self.player.health += 1
+                health_pack.kill() 
 
     # Function that manages player invinsibility. Only after the damage cooldown time from the last time the player took damage 
     # can the player take damage again.
     def damage_timer(self):
-        if not self.can_take_damage:
-            current_time = pygame.time.get_ticks()
-            if current_time - self.damage_time >= self.damage_cooldown:
-                self.can_take_damage = True
+        self.player.update_damage_timer()
 
     # Render the player's health as long as player isn't at 0 health. 
     def draw_ui(self):
-        if self.player_health > 0:
-            heart_bar = self.heart_images[self.player_health]
+        if self.player.health > 0:
+            heart_bar = self.heart_images[self.player.health]
             x = 10
             y = WINDOW_HEIGHT - heart_bar.get_height() - 10
             self.display_surface.blit(heart_bar, (x, y))
-
-            # Display wave number
-            wave_font = pygame.font.Font(None, 40)
-            wave_text = wave_font.render(f"Wave: {self.wave_number}", True, (255, 255, 255))
-            self.display_surface.blit(wave_text, (10, 10))
+            
+            #Also display the wave number
+            self.display_surface.blit(self.wave_text_font.render(f"Wave: {self.wave_number}", True, (255, 255, 255)), (10, 10))
     # Game loop that runs the game. 
     def run(self):
         start_screen = StartScreen(self.display_surface, self.clock)
@@ -313,15 +296,7 @@ class Game:
         self.enemy_sprites.empty()
         self.home_sprite.empty()
         self.health_pack_sprites.empty()
-        
-      
-        self.player_health = 5
-        self.can_take_damage = True
-        self.damage_time = 0
-        
-        self.collision_start_time = 0
-        self.is_colliding = False
-        
+
         self.game_won = False
         self.running = True
         
@@ -331,9 +306,9 @@ class Game:
         # Reset wave system
         self.wave_number = 1
         self.enemies_killed = 0
-        self.enemies_per_wave = 10
+        self.enemies_per_wave = INITIAL_ENEMIES_PER_WAVE
         # Reset enemy spawn timer to initial 2 seconds
-        pygame.time.set_timer(self.enemy_event, 2000)
+        pygame.time.set_timer(self.enemy_event, INITIAL_SPAWN_INTERVAL)
 
         self.spawn_positions = []
         
